@@ -1,5 +1,6 @@
 package com.project.tapia.tienda.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @AllArgsConstructor
@@ -28,7 +30,12 @@ public class Order implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     private LocalDateTime currentDateTime;
+    private String currentDateTimes;
+
+
+    private Double total;
 
     @OneToOne
     @JoinColumn(name = "client_id", referencedColumnName = "id")
@@ -38,16 +45,18 @@ public class Order implements Serializable {
     @JoinColumn(name = "shop_id", referencedColumnName = "id")
     private Shop shop;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "product_id", referencedColumnName = "id")
-    private List<Product> products;
+    @OneToMany(cascade=CascadeType.ALL)
+    @JoinColumn(name = "order_detail_id", referencedColumnName = "id")
+    private List<OrderDetail> details;
 
-    public Order(Client client, Shop shop, List products){
+    public Order(Client client, Shop shop, List details, Double total){
         this.currentDateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        this.currentDateTimes = this.currentDateTime.format(formatter);
         this.client = client;
         this.shop = shop;
-        this.products = products;
-
+        this.details = details;
+        this.total = total;
     }
 
 }

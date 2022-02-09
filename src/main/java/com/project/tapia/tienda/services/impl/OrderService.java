@@ -2,9 +2,11 @@ package com.project.tapia.tienda.services.impl;
 
 import com.opencsv.CSVWriter;
 import com.project.tapia.tienda.dao.IOrderDao;
+import com.project.tapia.tienda.dao.IOrderDetailDao;
 import com.project.tapia.tienda.exception.ApiWebClientException;
 import com.project.tapia.tienda.models.Client;
 import com.project.tapia.tienda.models.Order;
+import com.project.tapia.tienda.models.OrderDetail;
 import com.project.tapia.tienda.models.Product;
 import com.project.tapia.tienda.models.Shop;
 import com.project.tapia.tienda.services.IClientService;
@@ -41,6 +43,9 @@ public class OrderService implements IOrderService {
     private IOrderDao dao;
 
     @Autowired
+    IOrderDetailDao orderDetailDao;
+
+    @Autowired
     private WebClient webClient;
 
     @Autowired
@@ -74,15 +79,16 @@ public class OrderService implements IOrderService {
                 .map(order -> {
                     Client clientModel = clientService.findClientByIdentification(order.getClient().getIdentificacion());
                     Shop shopModel = shopService.findById(order.getShop().getId());
-                    List<Product> products = order.getProducts().stream().
-                    map(product -> {
-                        Product productDb = productService.findProductById(product.getId());
-
-                        stockVerification(productDb, product.getStock());
-
-                        return  productDb;
+                    List<OrderDetail> details = order.getDetails().stream().
+                    map(detail -> {
+                        Product productDb = productService.findProductById(detail.getProduct().getId());
+                        detail.setTotal(productDb.getPrice() * detail.getQuantity());
+                        stockVerification(productDb, detail.getQuantity());
+                        detail.setProduct(productDb);
+                        return  detail;
                     }).collect(Collectors.toList());
-                    return dao.save(new Order(clientModel, shopModel, products));
+                    Order orderDb = dao.save(new Order(clientModel, shopModel, details, details.stream().mapToDouble(OrderDetail::getTotal).sum()));
+                    return orderDb;
                 }).collect(Collectors.toList());
     }
 
@@ -130,7 +136,7 @@ public class OrderService implements IOrderService {
     public Mono<ByteArrayInputStream> rerportB(){
         List<String[]> records = new ArrayList<>();
         records.add(new String[]{"shop", "product", "total-price"});
-        dao.findBTransactionReportB().forEach(transaction -> {
+        orderDetailDao.findBTransactionReportB().forEach(transaction -> {
             records.add(new String[] {
                     transaction.getShop(),
                     transaction.getProduct(),

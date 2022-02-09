@@ -44,7 +44,7 @@ public class OrderController {
         return ResponseEntity
                 .created(
                         URI.create(String.format("/orders/")))
-                .body(service.findAll());
+                .body(orderProcess);
     }
 
     @GetMapping("/transacciones/reporte-a")
