@@ -38,7 +38,7 @@ public class OrderController {
         return ResponseEntity.ok().body(list);
     }
 
-    @PostMapping("/{identification}/shop/{shopId}")
+    @PostMapping("/make")
     public ResponseEntity<?> order(@RequestBody List<Order> orders) {
         List<Order> orderProcess = service.processStock(orders);
         return ResponseEntity
