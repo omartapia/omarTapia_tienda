@@ -2,7 +2,6 @@ package com.project.tapia.tienda;
 
 import com.project.tapia.tienda.services.impl.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +13,7 @@ public class TiendaApplication {
 
 	@Autowired
 	private ProductService service;
+
 
 	public static void main(String[] args) {
 		SpringApplication.run(TiendaApplication.class, args);
@@ -27,5 +27,7 @@ public class TiendaApplication {
 									.stream()
 									.collect(Collectors.toList()))
 					.subscribe(service::persistProducts);
+
 	}
+
 }

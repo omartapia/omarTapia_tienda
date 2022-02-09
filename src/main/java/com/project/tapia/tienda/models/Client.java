@@ -19,7 +19,7 @@ import java.io.Serializable;
 @Table(name = "client")
 public class Client implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @NotNull(message = "identificacion es requerido")
     private String identificacion;

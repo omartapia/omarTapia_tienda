@@ -29,8 +29,12 @@ public class ShopController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Shop> find(@PathVariable Long id) {
-        Shop shop = service.findById(id);
-        return ResponseEntity.ok().body(shop);
+        try {
+            Shop shop = service.findById(id);
+            return ResponseEntity.ok().body(shop);
+        }catch (Exception exception){
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping

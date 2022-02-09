@@ -47,6 +47,11 @@ public class InventoryService implements IInventoryService {
     }
 
     @Override
+    public List<Inventory> persist(List<Inventory> inventory) {
+        return dao.saveAll(inventory);
+    }
+
+    @Override
     public Inventory findById(Long id) {
         return this.dao.findById(id)
                 .orElseThrow(() -> new ApiWebClientException("inventory no found."));

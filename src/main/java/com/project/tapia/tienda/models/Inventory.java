@@ -20,7 +20,7 @@ import java.io.Serializable;
 @Table(name = "inventory")
 public class Inventory implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne
@@ -30,5 +30,4 @@ public class Inventory implements Serializable {
     @OneToOne
     @JoinColumn(name = "product_id", referencedColumnName = "id")
     private Product product;
-
 }

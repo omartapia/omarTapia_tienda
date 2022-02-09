@@ -9,6 +9,7 @@ public interface IInventoryService {
 
     List<Inventory> findAll();
     Inventory persist(Inventory inventory);
+    List<Inventory> persist(List<Inventory> inventory);
     Inventory findById(Long id);
     List<Inventory> findByShopAndProduct(List<Product> products, Long shop);
     List<Inventory> processStock(List<Product> products, Long shop, String identification);
