@@ -91,6 +91,11 @@ public class InventoryService implements IInventoryService {
         return inventories;
     }
 
+    @Override
+    public Inventory save(Inventory inventory) {
+        return dao.save(inventory);
+    }
+
     private void solicitarStock(Inventory inventory, Integer stock, String url) {
         webClient.get()
                 .uri(url)
