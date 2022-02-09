@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ClientService implements IClientService {
@@ -26,6 +27,12 @@ public class ClientService implements IClientService {
     @Override
     public Client findClientById(Long id) {
         return dao.findById(id)
+                .orElseThrow(() -> new ApiWebClientException("client no found."));
+    }
+
+    @Override
+    public Client findClientByIdentification(String identification) {
+        return Optional.ofNullable(dao.findClientByIdentification(identification))
                 .orElseThrow(() -> new ApiWebClientException("client no found."));
     }
 

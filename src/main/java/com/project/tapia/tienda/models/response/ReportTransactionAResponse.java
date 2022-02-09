@@ -1,6 +1,5 @@
 package com.project.tapia.tienda.models.response;
 
-import com.project.tapia.tienda.models.Shop;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReportTransactionOneResponse {
+public class ReportTransactionAResponse {
 
     private String shop;
 

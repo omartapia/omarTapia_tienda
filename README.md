@@ -1,8 +1,11 @@
 # omarTapia_tienda
-
-para iniciar ejecutar TiendaApplication
+--------------------------------------------
+para iniciar
+---------------------------------------------
+ejecutar TiendaApplication
 
 importar curls a postman
 
-https://www.getpostman.com/collections/839d3a1d2962e28c0607 
+`https://www.getpostman.com/collections/839d3a1d2962e28c0607`
 
+disfrutar del proceso XD

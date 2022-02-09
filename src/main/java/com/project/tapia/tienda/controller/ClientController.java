@@ -1,10 +1,10 @@
 package com.project.tapia.tienda.controller;
 
 import com.project.tapia.tienda.models.Client;
-import com.project.tapia.tienda.models.Product;
 import com.project.tapia.tienda.services.IClientService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.validation.Valid;
 import java.net.URI;
 import java.util.List;
+
 @RestController
 @RequestMapping("/clients")
+@ControllerAdvice
 public class ClientController {
 
     @Autowired
@@ -53,7 +55,7 @@ public class ClientController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.ok().body("Deleted successfully...!");
     }

@@ -10,6 +10,8 @@ public interface IClientService {
 
     Client findClientById(Long id);
 
+    Client findClientByIdentification(String identification);
+
     Client persist(Client client);
 
     Client save(Client client);

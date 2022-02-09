@@ -4,6 +4,7 @@ import com.project.tapia.tienda.models.Product;
 import com.project.tapia.tienda.services.impl.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/products")
+@ControllerAdvice
 public class ProductsController {
 
     @Autowired

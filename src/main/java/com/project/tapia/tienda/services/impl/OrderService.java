@@ -1,11 +1,16 @@
 package com.project.tapia.tienda.services.impl;
 
-import com.project.tapia.tienda.dao.IInventoryDao;
+import com.opencsv.CSVWriter;
+import com.project.tapia.tienda.dao.IOrderDao;
 import com.project.tapia.tienda.exception.ApiWebClientException;
-import com.project.tapia.tienda.models.Inventory;
+import com.project.tapia.tienda.models.Client;
+import com.project.tapia.tienda.models.Order;
 import com.project.tapia.tienda.models.Product;
-import com.project.tapia.tienda.services.IInventoryService;
+import com.project.tapia.tienda.models.Shop;
+import com.project.tapia.tienda.services.IClientService;
+import com.project.tapia.tienda.services.IOrderService;
 import com.project.tapia.tienda.services.IProductService;
+import com.project.tapia.tienda.services.IShopService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,13 +18,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class InventoryService implements IInventoryService {
-    private static final Logger logger = LoggerFactory.getLogger(InventoryService.class);
+public class OrderService implements IOrderService {
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     @Value("${tienda.mock.stock.diez}")
     private String endPointStock10;
@@ -28,75 +38,66 @@ public class InventoryService implements IInventoryService {
     private String endPointStock5;
 
     @Autowired
-    private IInventoryDao dao;
+    private IOrderDao dao;
 
     @Autowired
     private WebClient webClient;
 
     @Autowired
-    private IProductService service;
+    private IProductService productService;
+
+    @Autowired
+    private IClientService clientService;
+
+    @Autowired
+    private IShopService shopService;
 
     @Override
-    public List<Inventory> findAll() {
+    public List<Order> findAll() {
         return dao.findAll();
     }
 
     @Override
-    public Inventory persist(Inventory inventory) {
-        return dao.save(inventory);
+    public Order persist(Order order) {
+        return dao.save(order);
     }
 
     @Override
-    public List<Inventory> persist(List<Inventory> inventory) {
-        return dao.saveAll(inventory);
-    }
-
-    @Override
-    public Inventory findById(Long id) {
+    public Order findById(Long id) {
         return this.dao.findById(id)
                 .orElseThrow(() -> new ApiWebClientException("inventory no found."));
     }
 
     @Override
-    public List<Inventory> findByShopAndProduct(List<Product> products, Long shop) {
-        return dao.findByShopAndProduct(shop,
-                        products.stream()
-                                .map(Product::getId)
-                                .collect(Collectors.toList()));
-    }
+    public List<Order> processStock(List<Order> orders) {
+        return orders.stream()
+                .map(order -> {
+                    Client clientModel = clientService.findClientById(order.getClient().getId());
+                    Shop shopModel = shopService.findById(order.getShop().getId());
+                    List<Product> products = order.getProducts().stream().
+                    map(product -> {
+                        Product productDb = productService.findProductById(product.getId());
 
-    @Override
-    public List<Inventory> processStock(List<Product> products, Long shop, String identification) {
-        List<Inventory> inventories = findByShopAndProduct(products, shop)
-                .stream()
-                .map(inventory -> {
-                    Integer stockInventory = inventory.getProduct().getStock();
-                    products.stream()
-                            .filter(product -> product.getCod().equalsIgnoreCase(inventory.getProduct().getCod()))
-                            .findFirst()
-                            .ifPresent(product -> {
-                                Integer stock = stockInventory - product.getStock();
+                        stockVerification(productDb, product.getStock());
 
-                                if(stock <= -10){
-                                    throw new ApiWebClientException("Unidades no disponibles > 10");
-                                } else if(stock > -10 && stock <=-5) {
-                                     solicitarStock(inventory, stock, endPointStock10);
-                                }else if(stock > -5 && stock <= 0) {
-                                    solicitarStock(inventory, stock, endPointStock5);
-                                }
-                            });
-                    return inventory;
+                        return  productDb;
+                    }).collect(Collectors.toList());
+                    return dao.save(new Order(clientModel, shopModel, products));
                 }).collect(Collectors.toList());
-
-        return inventories;
     }
 
-    @Override
-    public Inventory save(Inventory inventory) {
-        return dao.save(inventory);
+    private void stockVerification(Product product, Integer stockUser) {
+        Integer currentStock = product.getStock() - stockUser;
+        if(currentStock <= -10){
+            throw new ApiWebClientException(String.format("Unidades no disponibles > 10, producto:%s",currentStock));
+        } else if(currentStock > -10 && currentStock <=-5) {
+            solicitarStock(product, currentStock, endPointStock10);
+        }else if(currentStock > -5 && currentStock <= 0) {
+            solicitarStock(product, currentStock, endPointStock5);
+        }
     }
 
-    private void solicitarStock(Inventory inventory, Integer stock, String url) {
+    private void solicitarStock(Product product, Integer currerntStock, String url) {
         webClient.get()
                 .uri(url)
                 .retrieve()
@@ -105,9 +106,48 @@ public class InventoryService implements IInventoryService {
                     throw new ApiWebClientException("No existe consumo de API externa");
                 })
                 .bodyToMono(Product.class)
-                .subscribe(product -> {
-                    service.persistStock(inventory.getProduct(),product.getStock() + stock);
+                .subscribe(productSuscriber -> {
+                    productService.persistStock(product,product.getStock() + currerntStock);
                 });
     }
 
+    @Override
+    public Mono<ByteArrayInputStream> rerportA(){
+        List<String[]> records = new ArrayList<>();
+             records.add(new String[]{"shop", "dateTime", "transactions"});
+             dao.findBTransactionReportA().forEach(transaction -> {
+                records.add(new String[] {
+                        transaction.getShop(),
+                        transaction.getLocalDateTime().toString(),
+                        transaction.getTransactions().toString()
+                });
+        });
+
+        return Mono.just(buildCsv(records));
+    }
+
+    @Override
+    public Mono<ByteArrayInputStream> rerportB(){
+        List<String[]> records = new ArrayList<>();
+        records.add(new String[]{"shop", "product", "total-price"});
+        dao.findBTransactionReportB().forEach(transaction -> {
+            records.add(new String[] {
+                    transaction.getShop(),
+                    transaction.getProduct(),
+                    transaction.getTotal().toString()
+            });
+        });
+
+        return Mono.just(buildCsv(records));
+    }
+
+    public ByteArrayInputStream buildCsv(List records) {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        OutputStreamWriter streamWriter = new OutputStreamWriter(stream);
+        CSVWriter writer = new CSVWriter(streamWriter);
+        records.forEach(o -> {
+            writer.writeNext((String[]) o);
+        });
+        return new ByteArrayInputStream(stream.toByteArray());
+    }
 }

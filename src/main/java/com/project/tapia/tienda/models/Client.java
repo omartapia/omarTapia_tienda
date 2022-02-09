@@ -21,9 +21,12 @@ public class Client implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @NotNull(message = "identificacion es requerido")
     private String identificacion;
+
     private String foto;
+
     @NotNull(message = "nombre es requerido")
     private String nombre;
 }

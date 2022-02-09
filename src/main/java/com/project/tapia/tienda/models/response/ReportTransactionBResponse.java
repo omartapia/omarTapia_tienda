@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReportTransactionAResponse {
+public class ReportTransactionBResponse {
 
     private String shop;
 
-    private LocalDateTime localDateTime;
+    private String product;
 
-    private Integer transactions;
+    private Double total;
 }
