@@ -72,7 +72,7 @@ public class OrderService implements IOrderService {
     public List<Order> processStock(List<Order> orders) {
         return orders.stream()
                 .map(order -> {
-                    Client clientModel = clientService.findClientById(order.getClient().getId());
+                    Client clientModel = clientService.findClientByIdentification(order.getClient().getIdentificacion());
                     Shop shopModel = shopService.findById(order.getShop().getId());
                     List<Product> products = order.getProducts().stream().
                     map(product -> {
