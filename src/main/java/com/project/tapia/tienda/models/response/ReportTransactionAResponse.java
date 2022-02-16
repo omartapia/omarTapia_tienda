@@ -1,19 +1,26 @@
 package com.project.tapia.tienda.models.response;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class ReportTransactionAResponse {
 
     private String shop;
 
     private LocalDateTime localDateTime;
 
-    private Integer transactions;
+    private Long transactions;
+
+    public ReportTransactionAResponse() {
+
+    }
+
+    public ReportTransactionAResponse(String shop, LocalDateTime localDateTime, Long transactions) {
+        this.shop = shop;
+        this.localDateTime = localDateTime.toLocalDate().atStartOfDay();
+        this.transactions = transactions;
+    }
+
 }

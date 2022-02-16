@@ -4,15 +4,18 @@ import com.opencsv.CSVWriter;
 import com.project.tapia.tienda.dao.IOrderDao;
 import com.project.tapia.tienda.dao.IOrderDetailDao;
 import com.project.tapia.tienda.exception.ApiWebClientException;
+import com.project.tapia.tienda.models.Arrangement;
 import com.project.tapia.tienda.models.Client;
-import com.project.tapia.tienda.models.Order;
-import com.project.tapia.tienda.models.OrderDetail;
+import com.project.tapia.tienda.models.ArrangementDetail;
 import com.project.tapia.tienda.models.Product;
 import com.project.tapia.tienda.models.Shop;
+import com.project.tapia.tienda.models.request.ReportTransactionARequest;
+import com.project.tapia.tienda.models.response.ReportTransactionAResponse;
 import com.project.tapia.tienda.services.IClientService;
 import com.project.tapia.tienda.services.IOrderService;
 import com.project.tapia.tienda.services.IProductService;
 import com.project.tapia.tienda.services.IShopService;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +27,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,52 +62,57 @@ public class OrderService implements IOrderService {
     private IShopService shopService;
 
     @Override
-    public List<Order> findAll() {
+    public List<Arrangement> findAll() {
         return dao.findAll();
     }
 
     @Override
-    public Order persist(Order order) {
-        return dao.save(order);
+    public Arrangement persist(Arrangement arrangement) {
+        return dao.save(arrangement);
     }
 
     @Override
-    public Order findById(Long id) {
+    public Arrangement findById(Long id) {
         return this.dao.findById(id)
                 .orElseThrow(() -> new ApiWebClientException("inventory no found."));
     }
 
     @Override
-    public List<Order> processStock(List<Order> orders) {
-        return orders.stream()
+    public List<Arrangement> processStock(List<Arrangement> arrangements) {
+        return arrangements.stream()
                 .map(order -> {
                     Client clientModel = clientService.findClientByIdentification(order.getClient().getIdentificacion());
                     Shop shopModel = shopService.findById(order.getShop().getId());
-                    List<OrderDetail> details = order.getDetails().stream().
+                    List<ArrangementDetail> details = order.getDetails().stream().
                     map(detail -> {
                         Product productDb = productService.findProductById(detail.getProduct().getId());
                         detail.setTotal(productDb.getPrice() * detail.getQuantity());
-                        stockVerification(productDb, detail.getQuantity());
                         detail.setProduct(productDb);
-                        return  detail;
+                        detail.setArrangement(order);
+                        stockVerification(productDb, detail.getQuantity());
+                        return detail;
                     }).collect(Collectors.toList());
-                    Order orderDb = dao.save(new Order(clientModel, shopModel, details, details.stream().mapToDouble(OrderDetail::getTotal).sum()));
-                    return orderDb;
+                    order.setClient(clientModel);
+                    order.setShop(shopModel);
+                    order.setTotal(details.stream().mapToDouble(ArrangementDetail::getTotal).sum());
+                    return dao.saveAndFlush(order);
                 }).collect(Collectors.toList());
     }
 
     private void stockVerification(Product product, Integer stockUser) {
         Integer currentStock = product.getStock() - stockUser;
         if(currentStock <= -10){
-            throw new ApiWebClientException(String.format("Unidades no disponibles > 10, producto:%s",currentStock));
+            throw new ApiWebClientException(String.format("Unidades no disponibles > 10, producto:%s",product.getStock()));
         } else if(currentStock > -10 && currentStock <=-5) {
             solicitarStock(product, currentStock, endPointStock10);
         }else if(currentStock > -5 && currentStock <= 0) {
             solicitarStock(product, currentStock, endPointStock5);
+        }else {
+            productService.persistStock(product,currentStock);
         }
     }
 
-    private void solicitarStock(Product product, Integer currerntStock, String url) {
+    private void solicitarStock(Product product, Integer currentStock, String url) {
         webClient.get()
                 .uri(url)
                 .retrieve()
@@ -113,22 +122,24 @@ public class OrderService implements IOrderService {
                 })
                 .bodyToMono(Product.class)
                 .subscribe(productSuscriber -> {
-                    productService.persistStock(product,product.getStock() + currerntStock);
+                    productService.persistStock(product,productSuscriber.getStock() + currentStock);
                 });
     }
 
     @Override
-    public Mono<ByteArrayInputStream> rerportA(){
+    public Mono<ByteArrayInputStream> rerportA(ReportTransactionARequest request){
         List<String[]> records = new ArrayList<>();
-             records.add(new String[]{"shop", "dateTime", "transactions"});
-             dao.findBTransactionReportA().forEach(transaction -> {
-                records.add(new String[] {
-                        transaction.getShop(),
-                        transaction.getLocalDateTime().toString(),
-                        transaction.getTransactions().toString()
-                });
-        });
-
+             records.add(new String[]{"shop", "date", "transactions"});
+        dao.findBTransactionReportA(
+                        request.getStartDate().atStartOfDay(),
+                        request.getEndDate().atStartOfDay())
+                .stream().collect(Collectors.groupingBy( e ->
+                        Pair.of(e.getShop(), e.getLocalDateTime()),
+                                        Collectors.counting())).forEach((pairs, count) ->
+                                               records.add(new String[] {
+                                                       pairs.getLeft(),
+                                                       String.valueOf(pairs.getRight()),
+                                                       String.valueOf(count)}));
         return Mono.just(buildCsv(records));
     }
 
@@ -148,12 +159,18 @@ public class OrderService implements IOrderService {
     }
 
     public ByteArrayInputStream buildCsv(List records) {
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        OutputStreamWriter streamWriter = new OutputStreamWriter(stream);
-        CSVWriter writer = new CSVWriter(streamWriter);
-        records.forEach(o -> {
-            writer.writeNext((String[]) o);
-        });
-        return new ByteArrayInputStream(stream.toByteArray());
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            OutputStreamWriter streamWriter = new OutputStreamWriter(out);
+            CSVWriter writer = new CSVWriter(streamWriter);
+            writer.writeAll(records,false);
+            writer.flush();
+            writer.close();
+            out.close();
+            return  new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            throw new ApiWebClientException("Error al crear archivo csv.");
+        }
+
     }
 }

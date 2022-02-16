@@ -1,21 +1,22 @@
 package com.project.tapia.tienda.services;
 
-import com.project.tapia.tienda.models.Order;
+import com.project.tapia.tienda.models.Arrangement;
+import com.project.tapia.tienda.models.request.ReportTransactionARequest;
 import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
 
 public interface IOrderService {
-    List<Order> findAll();
+    List<Arrangement> findAll();
 
-    Order persist(Order order);
+    Arrangement persist(Arrangement arrangement);
 
-    Order findById(Long id);
+    Arrangement findById(Long id);
 
-    List<Order> processStock(List<Order> orders);
+    List<Arrangement> processStock(List<Arrangement> arrangements);
 
-    Mono<ByteArrayInputStream> rerportA();
+    Mono<ByteArrayInputStream> rerportA(ReportTransactionARequest request);
 
     Mono<ByteArrayInputStream> rerportB();
 }
